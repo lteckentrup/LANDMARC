@@ -55,7 +55,8 @@ def get_data(var,first_year,last_year,exp):
         ### Read in all natural vegetation covers
         fname = pathwayIN+exp+'/lu_frac_'+exp+'_years.nc'       
     else:
-        fname = pathwayIN+exp+'/'+var+'_'+ID+'_EC-Earth3-CC_ssp245_r1i1p1f1_gr_2015-2100.nc'
+        fname = (pathwayIN+exp+'/'+var+'_'+ID+
+                 '_EC-Earth3-CC_ssp245_r1i1p1f1_gr_2015-2100.nc')
         
     ds = xr.open_dataset(fname).sel(time=slice(first_year,
                                                last_year)).mean(dim='time')
@@ -175,7 +176,9 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
         ds_region_invertlat = xr.open_dataset(pathwayIN+
                                               '/region_shape/mask_'+region+'.nc')
         ### Invert latitude
-        ds_region = ds_region_invertlat.reindex(lat=list(reversed(ds_region_invertlat['lat'])))
+        ds_region = ds_region_invertlat.reindex(
+            lat=list(reversed(ds_region_invertlat['lat']))
+            )
         
         ### Plot contour of ACTO on top of variable
         axs[position].contour(lon, lat, ds_region_invertlat['lsm'][0].fillna(0), 
@@ -291,7 +294,8 @@ def plot_LCF_cPool(exp,ref,first_year,last_year):
         axs[p].xaxis.set_visible(True)
 
     plt.subplots_adjust(**plot_params)
-    plt.savefig('figures/LCF_cPool_'+exp+'_'+ref+'_'+first_year+'-'+last_year+'_sens_'+region+'.png',dpi=400)
+    plt.savefig('figures/LCF_cPool_'+exp+'_'+ref+'_'+first_year+'-'+last_year+
+                '_sens_'+region+'.png',dpi=400)
 
 def plot_clim(first_year,last_year):
     global fig
@@ -339,7 +343,8 @@ def plot_clim(first_year,last_year):
 
     plt.subplots_adjust(**plot_params)
 
-    plt.savefig('figures/clim_'+first_year+'-'+last_year+'_sens_'+region+'.png',dpi=400)
+    plt.savefig('figures/clim_'+first_year+'-'+last_year+'_sens_'+region+'.png',
+                dpi=400)
 
 if args.plot_type == 'clim':
     plot_clim(first_year,last_year)
