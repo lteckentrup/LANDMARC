@@ -24,6 +24,7 @@ parser.add_argument('--last_year', type=str, required=True)
 parser.add_argument('--region', type=str, required=True)
 parser.add_argument('--exp', type=str, required=False)
 parser.add_argument('--ref', type=str, required=False)
+parser.add_argument('--var_type', type=str, required=False)
 parser.add_argument('--plot_type', type=str, required=False)
 
 args = parser.parse_args()
@@ -32,6 +33,7 @@ args = parser.parse_args()
 first_year=args.first_year
 last_year=args.last_year
 region=args.region
+plot_type=args.plot_type
 
 ### Set pathway where input files are located
 pathwayIN='/esarchive/scratch/lteckent/LANDMARC/'
@@ -53,11 +55,18 @@ def get_data(var,first_year,last_year,exp):
     ### Read in variable
     if var in ('pasture', 'cropland', 'natural'):
         ### Read in all natural vegetation covers
-        fname = pathwayIN+exp+'/lu_frac_'+exp+'_years.nc'       
+        if exp == 'a3bh':
+            fname = pathwayIN+exp+'/lu_frac_'+exp+'_years.nc'       
+        else:
+            fname = pathwayIN+exp+'/lu_frac_a6zt_years.nc'       
     else:
-        fname = (pathwayIN+exp+'/'+var+'_'+ID+
-                 '_EC-Earth3-CC_ssp245_r1i1p1f1_gr_2015-2100.nc')
-        
+        if exp == 'a3bh':
+            fname = (pathwayIN+exp+'/'+var+'_'+ID+
+                    '_EC-Earth3-CC_historical_r1i1p1f1_gr_1950-2014.nc')
+        else:
+            fname = (pathwayIN+exp+'/'+var+'_'+ID+
+                    '_EC-Earth3-CC_ssp245_r1i1p1f1_gr_2015-2100.nc')
+                    
     ds = xr.open_dataset(fname).sel(time=slice(first_year,
                                                last_year)).mean(dim='time')
 
@@ -71,11 +80,21 @@ def get_data(var,first_year,last_year,exp):
     return(da) 
 
 ### Set up plot for maps
-def make_map(var,first_year,last_year,exp,ref,position,region):
-    ### Get diff
-    diff_raw = get_data(var,first_year,last_year,exp) -  \
-               get_data(var,first_year,last_year,ref)
-               
+def make_map(var,first_year,last_year,exp,ref,position,region,plot_type):
+    ### Get data
+    if plot_type == 'sens':
+        diff_raw = get_data(var,first_year,last_year,exp) -  \
+                   get_data(var,first_year,last_year,ref)
+    elif plot_type == 'delta':    
+        if var in ('natural','pasture','cropland'):           
+            diff_raw = get_data(var,first_year,last_year,exp) -  \
+                       get_data(var,'2015','2029','a3bh')
+        else:        
+            diff_raw = get_data(var,first_year,last_year,exp) -  \
+                       get_data(var,'1981','2010','a3bh')
+    elif plot_type == 'total':
+        diff_raw = get_data(var,first_year,last_year,exp)
+                   
     ### Get latitude and longitude coordinates
     lat, lon = diff_raw.lat, diff_raw.lon
     
@@ -100,18 +119,38 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
             
     ### Set levels for colorbar
     if var in ('cropland','natural','pasture'):
-        levels = [-100,-50,-20,-10,-5,-2,-1,1,2,5,10,20,50,100]
-        cmap='BrBG'
+        if plot_type == 'total':
+            levels = [0,1,2,5,10,20,50,100]
+            cmap='viridis_r'
+        else:
+            levels = [-100,-50,-20,-10,-5,-2,-1,1,2,5,10,20,50,100]
+            cmap='BrBG'
+            
     elif var == 'tas':
-        levels = [-2,-1.75,-1.5,-1.25,-1,-0.75,-0.5,-0.25,0,0.25,0.5]
-        cmap='YlGnBu_r'
+        if plot_type == 'total':
+            levels = [-2,-1.75,-1.5,-1.25,-1,-0.75,-0.5,-0.25,0,0.25,0.5]
+            cmap='magma_r'
+        elif plot_type == 'sens':
+            levels = [-2,-1.75,-1.5,-1.25,-1,-0.75,-0.5,-0.25,0,0.25,0.5]
+            cmap='YlGnBu_r'
+        elif plot_type == 'delta':
+            levels = [-0.5,0,0.5,1,1.5,2,2.5,3,3.5]
+            cmap='YlOrRd'
     elif var == 'pr':
-        levels = [-500,-200,-100,-50,-20,-10,-5,5,10,20,50,100,200,500]
-        cmap='BrBG'
+        if plot_type == 'total':
+            levels = [-500,-200,-100,-50,-20,-10,-5,5,10,20,50,100,200,500]
+            cmap='viridis_r'
+        else:
+            levels = [-500,-200,-100,-50,-20,-10,-5,5,10,20,50,100,200,500]
+            cmap='BrBG'
     else:
-        levels = [-5000,-2000,-1000,-500,-200,-100,-50,-20,-10,-5,
-                  5,10,20,50,100,200,500,1000,2000,5000]
-        cmap='BrBG'
+        if plot_type == 'total':
+            levels = [-5000,-2000,-1000,-500,-200,-100,-50,-20,-10,-5,
+                    5,10,20,50,100,200,500,1000,2000,5000]
+            cmap='BrBG'
+        else:
+            levels = [0,5,10,20,50,100,200,500,1000,2000,5000]
+            cmap='viridis_r'
         diff = diff * 1000
 
     ### Set colorbar: assign new colors to arrow tips so add two extra colors
@@ -119,19 +158,30 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
     cols = pal.as_hex()
     
     if var == 'tas':
-        pal = sns.color_palette('magma_r', len(levels))
-        cols_tas = pal.as_hex()
+        if plot_type == 'sens':
+            pal = sns.color_palette('magma_r', len(levels))
+            cols_tas = pal.as_hex()
 
-        cols[-2] = cols_tas[1]
-        cols[-4] = cols_tas[0]
+            cols[-2] = cols_tas[1]
+            cols[-4] = cols_tas[0]
 
-        ### cmap based on actual number of levels (exclude first and last cmap val)
-        cmap = ListedColormap(cols[1:-1])
+            ### cmap based on actual number of levels (exclude first and last cmap val)
+            cmap = ListedColormap(cols[1:-1])
 
-        ### Set arrow color to first and last cmap val
-        cmap.set_over(cols_tas[2])
-        cmap.set_under(cols[0])
+            ### Set arrow color to first and last cmap val
+            cmap.set_over(cols_tas[2])
+            cmap.set_under(cols[0])
 
+        elif plot_type == 'delta':
+            cols[1] = '#b7d2e8'
+
+            ### cmap based on actual number of levels (exclude first and last cmap val)
+            cmap = ListedColormap(cols[1:-1])
+
+            ### Set arrow color to first and last cmap val
+            cmap.set_under('#6da3d0')
+            cmap.set_over(cols[-1])
+        
     else:
         ### Set low values to grey
         cols[int(len(levels)/2)] = '#d3d3d3'
@@ -200,19 +250,19 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
                 cax = plt.axes([0.15, 0.57, 0.7, 0.035])
             else:
                 cax = plt.axes([0.15, 0.59, 0.7, 0.035])
-            label = '$\Delta$ Cover [%]'
+            label = 'Cover [%]'
         if var == 'cVeg':
             cax = plt.axes([0.05, 0.08, 0.9, 0.035])
-            label = '$\Delta$ Carbon pool [gC m$^{-2}$]'
+            label = 'Carbon pool [gC m$^{-2}$]'
         if var == 'tas':
             if region in ('ACTO','EU27','EAC','NAMERICA'):
                 cax = plt.axes([0.15, 0.57, 0.7, 0.035])
             else:
                 cax = plt.axes([0.15, 0.59, 0.7, 0.035])
-            label = '$\Delta$ T [K]'
+            label = 'T [K]'
         if var == 'pr':
             cax = plt.axes([0.15, 0.08, 0.7, 0.035])
-            label = '$\Delta$ PPT [mm yr$^{-1}$]'
+            label = 'PPT [mm yr$^{-1}$]'
         
         cbar = fig.colorbar(p, 
                     cax=cax, 
@@ -222,9 +272,12 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
                     )   
         
         ### Reduce fontsize
-        cbar.ax.tick_params(axis='x', labelsize=8)  
-        cbar.set_label(label=label,fontsize=10)  
-                         
+        cbar.ax.tick_params(axis='x', labelsize=8) 
+        if plot_type == 'total': 
+            cbar.set_label(label=label,fontsize=10)  
+        else:
+            cbar.set_label(label='$\Delta$ '+label,fontsize=10)  
+            
     ### Reduce fontsize of coordinate labels
     axs[position].tick_params(axis='both', labelsize=8)     
 
@@ -269,7 +322,7 @@ fig, axs = plt.subplots(nrows=2,ncols=3,
                         figsize=figsize)
 axs=axs.flatten()
 
-def plot_LCF_cPool(exp,ref,first_year,last_year):
+def plot_LCF_cPool(exp,ref,first_year,last_year,plot_type):
     global fig
     global axs
     global plot_params
@@ -285,7 +338,7 @@ def plot_LCF_cPool(exp,ref,first_year,last_year):
 
     ### Loop through plot command, and adjust subplot titles
     for vars, vart, p, ti in zip(var_short_names, var_titles, positions, title_index):
-        make_map(vars,first_year,last_year,exp,ref,p,region)
+        make_map(vars,first_year,last_year,exp,ref,p,region,plot_type)
         axs[p].set_title(vart,fontsize=10)
         axs[p].set_title(ti, loc='left',fontsize=10)
 
@@ -299,10 +352,14 @@ def plot_LCF_cPool(exp,ref,first_year,last_year):
         axs[p].xaxis.set_visible(True)
 
     plt.subplots_adjust(**plot_params)
-    plt.savefig('figures/LCF_cPool_'+exp+'_'+ref+'_'+first_year+'-'+last_year+
-                '_sens_'+region+'.png',dpi=400)
-
-def plot_clim(first_year,last_year):
+    if plot_type in ('delta','total'):
+        plt.savefig('figures/LCF_cPool_'+exp+'_'+first_year+'-'+last_year+
+                    '_'+plot_type+'_'+region+'.png',dpi=400)
+    else:
+        plt.savefig('figures/LCF_cPool_'+exp+'_'+ref+'_'+first_year+'-'+last_year+
+                    '_'+plot_type+'_'+region+'.png',dpi=400)
+        
+def plot_clim(first_year,last_year,plot_type):
     global fig
     global axs
     global plot_params
@@ -314,7 +371,7 @@ def plot_clim(first_year,last_year):
 
     ### Loop through plot command, and adjust subplot titles
     for exps, expt,p,ti in zip(exp_short_names, exp_titles,positions,title_index):
-        make_map('tas',first_year,last_year,exps,'a6zt',p,region)
+        make_map('tas',first_year,last_year,exps,'a6zt',p,region,plot_type)
         axs[p].set_title(expt,fontsize=10)
         axs[p].set_title(ti, loc='left',fontsize=10)
 
@@ -323,7 +380,7 @@ def plot_clim(first_year,last_year):
 
     ### Loop through plot command, and adjust subplot titles
     for exps, expt,p,ti in zip(exp_short_names, exp_titles,positions,title_index):
-        make_map('pr',first_year,last_year,exps,'a6zt',p,region)
+        make_map('pr',first_year,last_year,exps,'a6zt',p,region,plot_type)
         axs[p].set_title(expt,fontsize=10)
         axs[p].set_title(ti, loc='left',fontsize=10)
 
@@ -333,7 +390,7 @@ def plot_clim(first_year,last_year):
 
     ### Loop through plot command, and adjust subplot titles
     for var,p,ti in zip(vars,positions,title_index):
-        make_map(var,first_year,last_year,'a6xx','a6xv',p,region)
+        make_map(var,first_year,last_year,'a6xx','a6xv',p,region,plot_type)
         axs[p].set_title('High vs moderate ambition',fontsize=10)
         axs[p].set_title(ti, loc='left',fontsize=10)
             
@@ -348,10 +405,10 @@ def plot_clim(first_year,last_year):
 
     plt.subplots_adjust(**plot_params)
 
-    plt.savefig('figures/clim_'+first_year+'-'+last_year+'_sens_'+region+'.png',
+    plt.savefig('figures/clim_'+first_year+'-'+last_year+'_'+plot_type+'_'+region+'.png',
                 dpi=400)
 
-if args.plot_type == 'clim':
-    plot_clim(first_year,last_year)
+if args.var_type == 'clim':
+    plot_clim(first_year,last_year,plot_type)
 else:
-    plot_LCF_cPool(args.exp,args.ref,first_year,last_year)    
+    plot_LCF_cPool(args.exp,args.ref,first_year,last_year,plot_type)    
