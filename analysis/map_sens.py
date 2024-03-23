@@ -75,16 +75,24 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
     ### Get diff
     diff_raw = get_data(var,first_year,last_year,exp) -  \
                get_data(var,first_year,last_year,ref)
-
+               
+    ### Get latitude and longitude coordinates
+    lat, lon = diff_raw.lat, diff_raw.lon
+    
     if region in ('global','ACTO'):
         diff = diff_raw
-    else:
-        ds_region = xr.open_dataset(pathwayIN+'/region_shape/mask_'+region+'.nc')
-        ds_region_invertlat = ds_region.reindex(lat=list(reversed(ds_region['lat'])))
-        var_mask = diff_raw.values * ds_region_invertlat['lsm'][0].values
-        diff = xr.DataArray(var_mask, 
-                            coords=diff_raw.coords, 
-                            dims=diff_raw.dims)
+    if region != 'global':
+        ds_region_invertlat = xr.open_dataset(pathwayIN+'/region_shape/mask_'+region+'.nc')
+        ds_region = ds_region_invertlat.reindex(lat=list(reversed(ds_region_invertlat['lat'])))
+        if region == 'ACTO':
+            ### Plot contour of ACTO on top of variable
+            axs[position].contour(lon, lat, ds_region['lsm'][0].fillna(0), 
+                                  colors='tab:red',linewidths=0.5,zorder=2)
+        if region != 'ACTO':
+            var_mask = diff_raw.values * ds_region['lsm'][0].values
+            diff = xr.DataArray(var_mask, 
+                                coords=diff_raw.coords, 
+                                dims=diff_raw.dims)
             
     ### Set levels for colorbar
     if var in ('cropland','natural','pasture'):
@@ -130,9 +138,6 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
         ### Set arrow color to first and last cmap val
         cmap.set_under(cols[0])
         cmap.set_over(cols[-1])
-        
-    ### Get latitude and longitude coordinates
-    lat, lon = diff.lat, diff.lon
     
     if region == 'ACTO':
         pass
@@ -161,29 +166,19 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
     ### Cut out Antarctica
     if region == 'global':
         coords = [-180,180,-60,90]
+    elif region == 'ACTO':
+        coords = [-90,-30,-35,12]
+    elif region == 'ASEAN':
+        coords = [90,150,-12,30]
     elif region == 'EAC':
         coords = [14,43,-13.5,13]
     elif region == 'EU27':
         coords = [-10,32,33,71]
-    elif region == 'ASEAN':
-        coords = [90,150,-12,30]
     elif region == 'NAMERICA':
         coords = [-168,-52,5,85]
-    elif region == 'ACTO':
-        coords = [-90,-30,-35,12]
-        
-        ### Plot contour of ACTO region instead of masking
-        ds_region_invertlat = xr.open_dataset(pathwayIN+
-                                              '/region_shape/mask_'+region+'.nc')
-        ### Invert latitude
-        ds_region = ds_region_invertlat.reindex(
-            lat=list(reversed(ds_region_invertlat['lat']))
-            )
-        
-        ### Plot contour of ACTO on top of variable
-        axs[position].contour(lon, lat, ds_region_invertlat['lsm'][0].fillna(0), 
-                              colors='tab:red',linewidths=0.5,zorder=2)
-        
+    elif region == 'OCEANIA':
+        coords = [110,180,-51,1]
+                
     ### Set extent of map
     axs[position].set_extent(coords, 
                              crs=ccrs.PlateCarree())
@@ -197,13 +192,19 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
     if position in (0,3):
         ### Set location, size and label of colorbar
         if var == 'natural':
-            cax = plt.axes([0.15, 0.59, 0.7, 0.035])
+            if region in ('ACTO','EU27','EAC','NAMERICA'):
+                cax = plt.axes([0.15, 0.57, 0.7, 0.035])
+            else:
+                cax = plt.axes([0.15, 0.59, 0.7, 0.035])
             label = '$\Delta$ Cover [%]'
         if var == 'cVeg':
             cax = plt.axes([0.05, 0.08, 0.9, 0.035])
             label = '$\Delta$ Carbon pool [gC m$^{-2}$]'
         if var == 'tas':
-            cax = plt.axes([0.15, 0.59, 0.7, 0.035])
+            if region in ('ACTO','EU27','EAC','NAMERICA'):
+                cax = plt.axes([0.15, 0.57, 0.7, 0.035])
+            else:
+                cax = plt.axes([0.15, 0.59, 0.7, 0.035])
             label = '$\Delta$ T [K]'
         if var == 'pr':
             cax = plt.axes([0.15, 0.08, 0.7, 0.035])
@@ -239,7 +240,7 @@ if region == 'ASEAN':
                    'right':0.975, 'bottom':0.15,
                    'wspace':0.07, 'hspace':0.45}
 if region == 'EAC':
-    figsize=(12,7)
+    figsize=(9,7)
     plot_params = {'top':0.95, 'left':0.05,
                    'right':0.975, 'bottom':0.15,
                    'wspace':0.05, 'hspace':0.45} 
