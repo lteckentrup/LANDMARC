@@ -82,12 +82,16 @@ def make_map(var,first_year,last_year,exp,ref,position,region):
     if region in ('global','ACTO'):
         diff = diff_raw
     if region != 'global':
+        ### Get files for regions of interest and invert latitude
         ds_region_invertlat = xr.open_dataset(pathwayIN+'/region_shape/mask_'+region+'.nc')
         ds_region = ds_region_invertlat.reindex(lat=list(reversed(ds_region_invertlat['lat'])))
+        
+        ### Plot contour of ACTO on top of variable
         if region == 'ACTO':
-            ### Plot contour of ACTO on top of variable
             axs[position].contour(lon, lat, ds_region['lsm'][0].fillna(0), 
                                   colors='tab:red',linewidths=0.5,zorder=2)
+        
+        ### Mask values outside region of interest for remaining regions
         if region != 'ACTO':
             var_mask = diff_raw.values * ds_region['lsm'][0].values
             diff = xr.DataArray(var_mask, 
