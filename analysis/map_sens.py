@@ -5,10 +5,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 from  matplotlib.colors import ListedColormap, BoundaryNorm
 from cartopy.util import add_cyclic_point
-import matplotlib.patches as mpatches
 
 import argparse
 
