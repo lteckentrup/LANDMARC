@@ -28,7 +28,7 @@ for exp_id in a7cy a7en a7eo; do
         echo ${exp_hist}
         echo ${realisation_historical}
 
-        for var in rsds rlus hfls; do
+        for var in rsds rlus rsus hfls; do
             echo ${var}
             ### Set up correct pathways
             ### Historical - esarchive
