@@ -28,12 +28,16 @@ for exp_id in a7cy a7en a7eo; do
         echo ${exp_hist}
         echo ${realisation_historical}
 
-        for var in rsds rlus rsus hfls; do
+        for var in tas pr rsds rlus rsus hfls; do
             echo ${var}
             ### Set up correct pathways
             ### Historical - esarchive
             pathwayIN_hist="/esarchive/exp/ecearth/${exp_hist}/original_files/cmorfiles/CMIP/EC-Earth-Consortium/"
-            pathwayIN_hist+="EC-Earth3-CC/historical/${realisation_historical}/Amon/${var}/gr/v????????"
+            if [[ "${exp_hist}" == "a3bh" ]]; then
+                pathwayIN_hist+="EC-Earth3-CC/historical/${realisation_historical}/Amon/${var}/gr/v20201127"
+            else 
+                pathwayIN_hist+="EC-Earth3-CC/historical/${realisation_historical}/Amon/${var}/gr/v????????"
+            fi
 
             ### Projection - esarchive
             pathwayIN_projection="/esarchive/exp/ecearth/${exp_id}/original_files/cmorfiles/ScenarioMIP/"
@@ -61,6 +65,66 @@ for exp_id in a7cy a7en a7eo; do
                     /gpfs/scratch/bsc32/bsc032352/LANDMARC/aux/landmask.nc \
                     ${pathwayOUT}/${var}_Amon_EC-Earth3-CC_ssp245_${realisation_projection}_gr_185001-210012_land.nc            
         done
+        for var in tasmax pr; do
+            echo ${var}
+            ### Set up correct pathways
+            ### Historical - esarchive
+            pathwayIN_hist="/esarchive/exp/ecearth/${exp_hist}/original_files/cmorfiles/CMIP/EC-Earth-Consortium/"
+            if [[ "${exp_hist}" == "a3bh" ]]; then
+                pathwayIN_hist+="EC-Earth3-CC/historical/${realisation_historical}/day/${var}/gr/v20210113"
+            elif [[ "${exp_hist}" == "a3o0" ]]; then
+                pathwayIN_hist="/gpfs/scratch/bsc32/bsc032352/LANDMARC/a3o0_r6i1p1f1/climate/"${var}
+            else 
+                pathwayIN_hist+="EC-Earth3-CC/historical/${realisation_historical}/day/${var}/gr/v????????"
+            fi
+            ### Projection - esarchive
+            pathwayIN_projection="/esarchive/exp/ecearth/${exp_id}/original_files/cmorfiles/ScenarioMIP/"
+            pathwayIN_projection+="EC-Earth-Consortium/EC-Earth3-CC/ssp245/${realisation_projection}/day/${var}/gr/v????????"
+
+            ### Merged files /gpfs/scratch
+            pathwayOUT="/gpfs/scratch/bsc32/bsc032352/LANDMARC/${exp_id}_${realisation_projection}/climate/${var}"
+
+            #### Mask set negative precipitation to 0 
+            if [ "$var" == "pr" ]; then
+                for year in {1850..2014..1}; do
+                    echo ${year}
+                    cdo -L -mulc,86400 -setrtoc,-1000000,0,0 \
+                        ${pathwayIN_hist}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231.nc \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231_tmp.nc
+                    cdo div \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231_tmp.nc \
+                        /gpfs/scratch/bsc32/bsc032352/LANDMARC/aux/landmask.nc \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231.nc
+                    rm ${pathwayOUT}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231_tmp.nc
+                done
+                for year in {2015..2100..1}; do
+                    echo ${year}
+                    cdo -L -mulc,86400 -setrtoc,-1000000,0,0 \
+                        ${pathwayIN_projection}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231.nc \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231_tmp.nc
+                    cdo div \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231_tmp.nc \
+                        /gpfs/scratch/bsc32/bsc032352/LANDMARC/aux/landmask.nc \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231.nc
+                    rm ${pathwayOUT}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231_tmp.nc
+                done
+            else                                                           
+                for year in {1850..2014..1}; do
+                    echo ${year}
+                    cdo div \
+                        ${pathwayIN_hist}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231.nc \
+                        /gpfs/scratch/bsc32/bsc032352/LANDMARC/aux/landmask.nc \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_historical_${realisation_historical}_gr_${year}0101-${year}1231.nc
+                done
+                for year in {2015..2100..1}; do
+                    echo ${year}
+                    cdo div \
+                        ${pathwayIN_projection}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231.nc \
+                        /gpfs/scratch/bsc32/bsc032352/LANDMARC/aux/landmask.nc \
+                        ${pathwayOUT}/${var}_day_EC-Earth3-CC_ssp245_${realisation_projection}_gr_${year}0101-${year}1231.nc
+                done
+            fi
+        done
     done
 done
 
@@ -78,5 +142,8 @@ for exp_id in a7cy a7en a7eo; do
                 ${pathwayIN}/rsus/rsus_Amon_EC-Earth3-CC_ssp245_${realisation}_gr_185001-210012.nc \
                 ${pathwayIN}/rsds/rsds_Amon_EC-Earth3-CC_ssp245_${realisation}_gr_185001-210012.nc \
                 ${pathwayIN}/albedo/albedo_Amon_EC-Earth3-CC_ssp245_${realisation}_gr_185001-210012.nc
+        cdo div ${pathwayIN}/albedo/albedo_Amon_EC-Earth3-CC_ssp245_${realisation}_gr_185001-210012.nc \
+                /gpfs/scratch/bsc32/bsc032352/LANDMARC/aux/landmask.nc \
+                 ${pathwayIN}/albedo/albedo_Amon_EC-Earth3-CC_ssp245_${realisation}_gr_185001-210012_land.nc
     done
 done
