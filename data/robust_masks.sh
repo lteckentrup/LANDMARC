@@ -34,7 +34,7 @@ python robust_masks.py --var cSoil --exp_ref a7en --exp_pert a7eo --first_year 2
 
 python robust_masks.py --var cLitter --exp_ref a7cy --exp_pert a7cy --first_year 2071 --last_year 2100
 python robust_masks.py --var cLitter --exp_ref a7cy --exp_pert a7en --first_year 2071 --last_year 2100
-python robust_masks.py --var cLiter --exp_ref a7en --exp_pert a7eo --first_year 2071 --last_year 2100
+python robust_masks.py --var cLitter --exp_ref a7en --exp_pert a7eo --first_year 2071 --last_year 2100
 
 python robust_masks.py --var cBECCS --exp_ref a7cy --exp_pert a7cy --first_year 2071 --last_year 2100
 python robust_masks.py --var cBECCS --exp_ref a7cy --exp_pert a7en --first_year 2071 --last_year 2100
