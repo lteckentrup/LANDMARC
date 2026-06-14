@@ -141,7 +141,7 @@ def get_data(var,exp,realisation,first_year,last_year):
                 
         ### Cumulative sum for fco2fossub
         if var == 'fco2fossub':
-            da_cumsum = da.cumsum(dim='time')
+            da_final = da.cumsum(dim='time')
 
         if var in ('albedo', 'hfls'):
             da_final = time_aggr(da,var)
