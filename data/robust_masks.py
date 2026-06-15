@@ -19,7 +19,7 @@ exp_pert=args.exp_pert
 first_year=args.first_year
 last_year=args.last_year
 
-pathwayIN=''
+pathwayIN='/gpfs/scratch/bsc32/bsc032352/LANDMARC/'
 
 ### Mask ocean points
 ds_mask = xr.open_dataset(pathwayIN+'aux/landmask.nc')
@@ -51,9 +51,8 @@ var_to_ID_dict = {var: id for id, vars in ID_to_var_dict.items() for var in vars
 
 ### Define fname suffix
 suffix_to_var_dict = {
-    '_2015-2100.nc': ['cBECCS','cBiochar','fco2fossub','cLand','cSoil','cVeg','cLitter','tx90p'],
-    '_185001-210012.nc': ['tas', 'pr', 'albedo','hfls'],
-    '_18500101-21001231.nc': ['dry_days']
+    '_2015-2100.nc': ['cBECCS','cBiochar','fco2fossub','cLand','cSoil','cVeg','cLitter','tx90p','dry_days'],
+    '_185001-210012.nc': ['tas', 'pr', 'albedo','hfls']
     }
 var_to_suffix_dict = {var: id for id, vars in suffix_to_var_dict.items() for var in vars}
 
@@ -124,7 +123,10 @@ def get_data(var,exp,realisation,first_year,last_year):
         if directory == 'carbon':
             CMIP_scen, suffix = 'ssp245', '2015-2100.nc'
         else:
-            CMIP_scen, suffix = 'ssp245', '185001-210012.nc'
+            if var in ('tx90p','dry_days'):
+                CMIP_scen, suffix = 'ssp245', '1850-2100.nc'
+            else:
+                CMIP_scen, suffix = 'ssp245', '185001-210012.nc'
     
     ### cBECCS, cBiochar and fco2fossub are 0 in historical - no need to read in
     if not (var in ('cBECCS', 'cBiochar', 'fco2fossub') and exp == 'a766'):
@@ -132,7 +134,7 @@ def get_data(var,exp,realisation,first_year,last_year):
         fname=(pathwayIN+exp+'_'+realisation+'/'+directory+'/'+
                var+'/'+var+'_'+ID+'_EC-Earth3-CC_'+CMIP_scen+
                '_'+realisation+'_gr_'+suffix)
-
+        print(fname)
         ### Open dataset
         da = xr.open_dataset(fname)[var]
         
@@ -143,10 +145,37 @@ def get_data(var,exp,realisation,first_year,last_year):
         if var == 'fco2fossub':
             da_final = da.cumsum(dim='time')
 
-        if var in ('albedo', 'hfls'):
+        if var in ('albedo', 'hfls', 'tas', 'pr'):
             da_final = time_aggr(da,var)
         else:
             da_final = da
+        
+        if 'height' in da_final.coords:
+            da_final = da_final.drop_vars('height', errors='ignore')
+            
+        ### Return dataset
+        return(da_final.sel(time=slice(first_year,last_year)))
+    
+    ### 0 during historical - generate fake data based on cLand
+    elif var in ('cBECCS', 'cBiochar', 'fco2fossub') and exp == 'a766':
+        fname=(pathwayIN+exp+'_'+realisation+'/'+directory+'/cLand/cLand_Emon_EC-Earth3-CC_'+
+               CMIP_scen+'_'+realisation+'_gr_'+suffix)
+        print(fname)
+        
+        ### Open dataset
+        da = xr.open_dataset(fname)['cLand']
+
+        ### Exclude Antarctica and make sure coordinates match 
+        da['lat'], da['lon'] = ds_mask['lat'], ds_mask['lon'] 
+                
+        ### Cumulative sum for fco2fossub
+        if var == 'fco2fossub':
+            da_final = da.cumsum(dim='time')
+
+        if var in ('albedo', 'hfls', 'tas', 'pr'):
+            da_final = time_aggr(da,var)
+        else:
+            da_final = da*0
             
         ### Return dataset
         return(da_final.sel(time=slice(first_year,last_year)))
@@ -172,7 +201,7 @@ def get_ensemble(var,exp,first_year,last_year):
     da = xr.concat([da_r1i1p1f1,
                     da_r2i1p1f1,
                     da_r3i1p1f1],
-                   dim='realization')        
+                   dim='realization').mean(dim='realization')   
     
     ### Return ensemble
     return(da)
@@ -187,7 +216,7 @@ def get_significant_change(var,exp_ref,exp_pert,first_year,last_year):
     ### otherwise define reference and exp_pert 
     if exp_ref == exp_pert:
         first_year_ref,last_year_ref = '1981', '2010'
-        if var in ('albedo','hfls','tas','pr'):
+        if var in ('albedo','hfls','tas','pr','tx90p','dry_days'):
             exp_ref = exp_pert
         else:
             exp_ref = 'a766'
@@ -195,8 +224,17 @@ def get_significant_change(var,exp_ref,exp_pert,first_year,last_year):
         first_year_ref,last_year_ref = first_year,last_year
         
     ### Get data for experiment
+    print(exp_ref)
+    print(exp_pert)
+    print(first_year_ref)
+    print(last_year_ref)
+    print(first_year)
+    print(last_year)
     da_ref = get_ensemble(var,exp_ref,first_year_ref,last_year_ref)
     da_exp = get_ensemble(var,exp_pert,first_year,last_year)
+        
+    print(da_ref.time.dt.year.values.flatten())
+    print(da_exp.time.dt.year.values.flatten())
 
     ### Apply t-test
     fractions = ensembles.robustness_fractions(da_exp,
@@ -205,10 +243,10 @@ def get_significant_change(var,exp_ref,exp_pert,first_year,last_year):
   
     ### Return mask where gridpoints are significantly different (threshold 0.05)
     robust_mask = xr.where(fractions.pvals <= 0.05, 1, 0)
-        
+
     fnameOUT = (pathwayIN+'robustness_maps/'+first_year+'-'+last_year+'/'+directory+
                 '/'+var+'/'+var+'_'+ID+'_EC-Earth3-CC_ssp245_'+exp_ref+'_'+exp_pert+'_gr.nc')
                                                              
-    robust_mask.to_dataset().to_netcdf(fnameOUT)
+    robust_mask.drop_vars('realization').to_dataset().to_netcdf(fnameOUT)
 
 get_significant_change(var,exp_ref,exp_pert,first_year,last_year)
