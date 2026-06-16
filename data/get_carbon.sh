@@ -111,3 +111,48 @@ for time_freq in "Emon" "Eyr" "Lmon"; do
         done
     done
 done
+
+for exp_id in "${experiments[@]}"; do
+    for realisation in "${realizations[@]}"; do
+        if [[ "${exp_id}" == "a7en" && "${realisation}" == "r2i1p1f1" ]]; then
+            realisation="r4i1p1f1"
+        fi        
+        cdo mergetime \
+            ${prefix}/${exp_id}/original_files/cmorfiles/ScenarioMIP/EC-Earth-Consortium/EC-Earth3-CC/ssp245/${realisation}/day/co2mass/gn/v202?????/co2mass_day_EC-Earth3-CC_ssp245_${realisation}_gn_????0101-????1231.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231_tmp.nc
+        cdo mergetime \
+            ${prefix}/${exp_id}/original_files/cmorfiles/ScenarioMIP/EC-Earth-Consortium/EC-Earth3-CC/ssp245/${realisation}/Amon/co2mass/gn/v202?????/co2mass_Amon_EC-Earth3-CC_ssp245_${realisation}_gn_????01-????12.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_Amon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012_tmp.nc
+        cdo mergetime \
+            ${prefix}/${exp_id}/original_files/cmorfiles/ScenarioMIP/EC-Earth-Consortium/EC-Earth3-CC/ssp245/${realisation}/day/co2s/gn/v202?????/co2s_day_EC-Earth3-CC_ssp245_${realisation}_gn_????0101-????1231.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231_tmp.nc
+        cdo mergetime \
+            ${prefix}/${exp_id}/original_files/cmorfiles/ScenarioMIP/EC-Earth-Consortium/EC-Earth3-CC/ssp245/${realisation}/Emon/co2s/gn/v202?????/co2s_Emon_EC-Earth3-CC_ssp245_${realisation}_gn_????01-????12.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_Emon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012_tmp.nc
+    done
+done    
+
+for exp_id in "${experiments[@]}"; do
+    for realisation in "${realizations[@]}"; do
+        if [[ "${exp_id}" == "a7en" && "${realisation}" == "r2i1p1f1" ]]; then
+            realisation="r4i1p1f1"
+        fi
+        cdo -L -mulc,0.272727273 -divc,1e+12 -selday,1 -selmon,1 \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231_tmp.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231.nc
+        rm ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231_tmp.nc
+        cdo -L -divdpy -yearsum -muldpm -mulc,0.272727273 -divc,1e+12 \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_Amon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012_tmp.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_Amon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012.nc
+        rm ${fileOUT}/${exp_id}_${realisation}/carbon/co2mass/co2mass_Amon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012_tmp.nc
+
+        cdo yearmean \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231_tmp.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231.nc
+        rm ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_day_EC-Earth3-CC_ssp245_${realisation}_gn_20150101-21001231_tmp.nc
+        cdo -L -divdpy -yearsum -muldpm \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_Emon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012_tmp.nc \
+            ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_Emon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012.nc
+        rm ${fileOUT}/${exp_id}_${realisation}/carbon/co2s/co2s_Emon_EC-Earth3-CC_ssp245_${realisation}_gn_201501-210012_tmp.nc
+    done
+done
