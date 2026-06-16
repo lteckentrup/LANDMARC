@@ -4,6 +4,8 @@ import xarray as xr
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.patches import Rectangle
+
 import cartopy
 import cartopy.crs as ccrs
 from  matplotlib.colors import ListedColormap, BoundaryNorm
@@ -11,7 +13,7 @@ from cartopy.util import add_cyclic_point
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 ### Set pathway where input files are located
-pathwayIN= 
+pathwayIN='/gpfs/scratch/bsc32/bsc032352/LANDMARC/'
 
 ### Mask ocean points
 ds_mask = xr.open_dataset(pathwayIN+'aux/landmask.nc')
@@ -101,11 +103,10 @@ def make_map(var,exp_ref,exp_pert,first_year,last_year,position):
         )   
 
 ### Set up figures    
-figsize=(15,8)
-plot_params = {'top':0.93, 'left':0.04,
-               'right':0.975, 'bottom':0.05,
-               'wspace':0.08, 'hspace':0.2} 
-    
+figsize=(14,7)
+plot_params = {'top':0.96, 'left':0.03,
+               'right':0.96, 'bottom':0.05,
+               'wspace':0.05, 'hspace':0.05}
 fig, axs = plt.subplots(nrows=3,ncols=3,
                         subplot_kw={'projection': ccrs.PlateCarree()},
                         figsize=figsize,
@@ -151,44 +152,81 @@ def LCF_panel_plot(paper_part):
     for vars, t_R, vt_R, pos_R in zip(var_short_names,
                                            title_MOD_REF,var_titles_REF, pos_MOD_REF):
         make_map(vars,'a7cy','a7en',first_year,last_year,pos_R)
-        axs[pos_R].set_title(t_R, loc='left')
-        axs[pos_R].set_title(vt_R, linespacing=1.75)
+        axs[pos_R].set_title(t_R, fontsize=9, loc='left')
+        axs[pos_R].set_title(vt_R, fontsize=9, linespacing=1.75)
         axs[pos_R].yaxis.set_visible(True)
+        axs[pos_R].tick_params(axis='x', labelsize=8)
+        axs[pos_R].tick_params(axis='y', labelsize=8)
     
     ### Second row: Pasture
     for vars, t_MR, vt_MR, pos_MR in zip(var_short_names,
                                               title_HIGH_REF,var_titles_HIGH_REF, pos_HIGH_REF):
         make_map(vars,'a7cy','a7eo',first_year,last_year,pos_MR)
-        axs[pos_MR].set_title(t_MR, loc='left')
-        axs[pos_MR].set_title(vt_MR, linespacing=1.75)
+        axs[pos_MR].set_title(t_MR, fontsize=9, loc='left')
+        axs[pos_MR].set_title(vt_MR, fontsize=9, linespacing=1.75)
         axs[pos_MR].yaxis.set_visible(True)
         axs[pos_MR].tick_params(axis='y', labelleft=False)
-        
+        axs[pos_MR].tick_params(axis='x', labelsize=8)
+        axs[pos_MR].tick_params(axis='y', labelsize=8)
+                
     ### Third row: Cropland 
     for vars, t_HM, vt_HM, pos_HM in zip(var_short_names,
                                               title_HIGH_MOD,var_titles_HIGH_MOD, pos_HIGH_MOD):
         make_map(vars,'a7en','a7eo',first_year,last_year,pos_HM)
-        axs[pos_HM].set_title(t_HM, loc='left')
-        axs[pos_HM].set_title(vt_HM, linespacing=1.75)
+        axs[pos_HM].set_title(t_HM, fontsize=9, loc='left')
+        axs[pos_HM].set_title(vt_HM, fontsize=9, linespacing=1.75)
         axs[pos_HM].yaxis.set_visible(True)
         axs[pos_HM].tick_params(axis='y', labelleft=False)
+        axs[pos_HM].tick_params(axis='x', labelsize=8)
+        axs[pos_HM].tick_params(axis='y', labelsize=8)
     
     ### Show bottom ticks and ticklabels bottom    
     for p in (6,7,8):
         axs[p].xaxis.set_visible(True)
+        axs[p].tick_params(axis='y', labelsize=8)
     
     ### Show bottom ticks but not labels (except bottom)
     for p in (0,1,2,3,4,5):
         axs[p].xaxis.set_visible(True)
-        axs[p].tick_params(axis='x', labelbottom=False)
+        axs[p].tick_params(axis='x', labelsize=8, labelbottom=False)
 
     ### Show yticks but not labels (except left column)
     for p in (1,2,4,5,7,8):
         axs[p].yaxis.set_visible(True)
-        axs[p].tick_params(axis='y', labelleft=False)
+        axs[p].tick_params(axis='y', labelsize=8, labelleft=False)
+
+    ### Manual legend
+    fig.add_artist(
+        Rectangle(
+            (0.32, 0.01),   # x, y in figure coordinates
+            0.05,           # width
+            0.03,           # height
+            transform=fig.transFigure,
+            facecolor='#912a23',
+            edgecolor='none'
+        )
+    )
+
+    fig.add_artist(
+        Rectangle(
+            (0.5, 0.01),
+            0.05,
+            0.03,
+            transform=fig.transFigure,
+            facecolor='#118e82',
+            edgecolor='none'
+        )
+    )
+
+    ### Add labels
+    fig.text(0.38, 0.025, r'Decrease $\rightarrow$ Increase', ha='left', 
+            va='center', fontsize=10, color='#912a23')
+    fig.text(0.67, 0.025, r'Increase $\rightarrow$ Decrease', ha='right', 
+            va='center', fontsize=10, color='#118e82')
         
     plt.subplots_adjust(**plot_params)
     plt.savefig('figures/landcover/maps_LCF_LMT_'+paper_part+'_sign_flip.png',dpi=400)
+
 
 LCF_panel_plot('main')
 # LCF_panel_plot('supplement')
